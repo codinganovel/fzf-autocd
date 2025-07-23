@@ -7,7 +7,7 @@ import (
 	"github.com/junegunn/fzf/src/tui"
 )
 
-func runTmux(args []string, opts *Options) (int, error) {
+func runTmux(args []string, opts *Options) (int, string, error) {
 	// Prepare arguments
 	fzf, rest := args[0], args[1:]
 	args = []string{"--bind=ctrl-z:ignore"}

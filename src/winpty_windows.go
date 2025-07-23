@@ -43,7 +43,7 @@ func needWinpty(opts *Options) bool {
 	return true
 }
 
-func runWinpty(args []string, opts *Options) (int, error) {
+func runWinpty(args []string, opts *Options) (int, string, error) {
 	argStr := escapeSingleQuote(args[0])
 	for _, arg := range args[1:] {
 		argStr += " " + escapeSingleQuote(arg)

@@ -38,7 +38,7 @@ func (r revision) compatible(other revision) bool {
 }
 
 // Run starts fzf
-func Run(opts *Options) (int, error) {
+func Run(opts *Options) (int, string, error) {
 	if opts.Filter == nil {
 		if opts.useTmux() {
 			return runTmux(os.Args, opts)
@@ -50,7 +50,7 @@ func Run(opts *Options) (int, error) {
 	}
 
 	if err := postProcessOptions(opts); err != nil {
-		return ExitError, err
+		return ExitError, "", err
 	}
 
 	defer util.RunAtExitFuncs()
@@ -169,7 +169,7 @@ func Run(opts *Options) (int, error) {
 	if opts.Filter == nil {
 		terminal, err = NewTerminal(opts, eventBox, executor)
 		if err != nil {
-			return ExitError, err
+			return ExitError, "", err
 		}
 		if len(initialReload) > 0 {
 			var temps []string
@@ -273,14 +273,16 @@ func Run(opts *Options) (int, error) {
 				chunks:  snapshot,
 				pattern: pattern})
 			for i := 0; i < merger.Length(); i++ {
-				opts.Printer(merger.Get(i).item.AsString(opts.Ansi))
+				if !opts.AutoCD {
+					opts.Printer(merger.Get(i).item.AsString(opts.Ansi))
+				}
 				found = true
 			}
 		}
 		if found {
-			return ExitOk, nil
+			return ExitOk, "", nil
 		}
-		return ExitNoMatch, nil
+		return ExitNoMatch, "", nil
 	}
 
 	// Synchronous search
@@ -531,5 +533,25 @@ func Run(opts *Options) (int, error) {
 			time.Sleep(dur)
 		}
 	}
-	return exitCode, err
+	
+	// Capture selected item for autocd functionality
+	var selectedItem string
+	if opts.AutoCD && exitCode == ExitOk && terminal != nil {
+		// Check if there are multi-selected items
+		if len(terminal.selected) > 0 {
+			// Use the first selected item for autocd
+			for _, sel := range terminal.sortSelected() {
+				selectedItem = sel.item.AsString(false)
+				break
+			}
+		} else {
+			// Use the currently highlighted item
+			current := terminal.currentItem()
+			if current != nil {
+				selectedItem = current.AsString(false)
+			}
+		}
+	}
+	
+	return exitCode, selectedItem, err
 }

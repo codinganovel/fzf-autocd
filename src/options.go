@@ -211,6 +211,9 @@ Usage: fzf [options]
     --walker-skip=DIRS       Comma-separated list of directory names to skip
                              (default: .git,node_modules)
 
+  DIRECTORY INHERITANCE
+    --autocd                 Change shell directory to selected item on exit
+
   HISTORY
     --history=FILE           History file
     --history-size=N         Maximum number of history entries (default: 1000)
@@ -615,6 +618,7 @@ type Options struct {
 	GapLine           *string
 	Ellipsis          *string
 	Scrollbar         *string
+	AutoCD            bool
 	Margin            [4]sizeSpec
 	Padding           [4]sizeSpec
 	BorderShape       tui.BorderShape
@@ -2629,6 +2633,8 @@ func parseOptions(index *int, opts *Options, allArgs []string) error {
 			opts.Wrap = true
 		case "--no-wrap":
 			opts.Wrap = false
+		case "--autocd":
+			opts.AutoCD = true
 		case "--wrap-sign":
 			str, err := nextString("wrap sign required")
 			if err != nil {

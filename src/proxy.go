@@ -33,10 +33,10 @@ func fifo(name string) (string, error) {
 	return output, nil
 }
 
-func runProxy(commandPrefix string, cmdBuilder func(temp string, needBash bool) (*exec.Cmd, error), opts *Options, withExports bool) (int, error) {
+func runProxy(commandPrefix string, cmdBuilder func(temp string, needBash bool) (*exec.Cmd, error), opts *Options, withExports bool) (int, string, error) {
 	output, err := fifo("proxy-output")
 	if err != nil {
-		return ExitError, err
+		return ExitError, "", err
 	}
 	defer os.Remove(output)
 
@@ -66,7 +66,7 @@ func runProxy(commandPrefix string, cmdBuilder func(temp string, needBash bool) 
 	} else {
 		input, err = fifo("proxy-input")
 		if err != nil {
-			return ExitError, err
+			return ExitError, "", err
 		}
 		defer os.Remove(input)
 
@@ -113,7 +113,7 @@ func runProxy(commandPrefix string, cmdBuilder func(temp string, needBash bool) 
 
 	cmd, err := cmdBuilder(temp, needBash)
 	if err != nil {
-		return ExitError, err
+		return ExitError, "", err
 	}
 	cmd.Stderr = os.Stderr
 	intChan := make(chan os.Signal, 1)
@@ -132,11 +132,11 @@ func runProxy(commandPrefix string, cmdBuilder func(temp string, needBash bool) 
 				data, err := os.ReadFile(becomeFile)
 				os.Remove(becomeFile)
 				if err != nil {
-					return ExitError, err
+					return ExitError, "", err
 				}
 				elems := strings.Split(string(data), "\x00")
 				if len(elems) < 1 {
-					return ExitError, errors.New("invalid become command")
+					return ExitError, "", errors.New("invalid become command")
 				}
 				command := elems[0]
 				env := []string{}
@@ -146,16 +146,16 @@ func runProxy(commandPrefix string, cmdBuilder func(temp string, needBash bool) 
 				executor := util.NewExecutor(opts.WithShell)
 				ttyin, err := tui.TtyIn(opts.TtyDefault)
 				if err != nil {
-					return ExitError, err
+					return ExitError, "", err
 				}
 				os.Remove(temp)
 				os.Remove(input)
 				os.Remove(output)
 				executor.Become(ttyin, env, command)
 			}
-			return code, err
+			return code, "", err
 		}
 	}
 
-	return ExitOk, nil
+	return ExitOk, "", nil
 }

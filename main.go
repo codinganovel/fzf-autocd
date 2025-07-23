@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"github.com/codinganovel/autocd-go"
 	fzf "github.com/junegunn/fzf/src"
 	"github.com/junegunn/fzf/src/protector"
+	"github.com/junegunn/fzf/src/tui"
+	"github.com/junegunn/fzf/src/util"
 )
 
 var version = "0.64"
@@ -96,6 +100,39 @@ func main() {
 		return
 	}
 
-	code, err := fzf.Run(options)
+	code, selectedItem, err := fzf.Run(options)
+	
+	// Handle autocd functionality
+	if code == fzf.ExitOk && options.AutoCD && selectedItem != "" {
+		handleAutoCD(selectedItem)
+		// If autocd fails, fall back to normal exit
+	}
+	
 	exit(code, err)
+}
+
+func handleAutoCD(selectedItem string) {
+	var targetDir string
+	if isDirectory(selectedItem) {
+		targetDir = selectedItem
+	} else {
+		targetDir = filepath.Dir(selectedItem)
+	}
+
+	// Fix: Set up stdin properly before calling autocd, just like fzf's become action
+	// This ensures the terminal file descriptor is correctly configured regardless of
+	// the working directory from which fzf was launched
+	if ttyin, err := tui.TtyIn(tui.DefaultTtyDevice); err == nil {
+		util.SetStdin(ttyin)
+	}
+
+	autocd.ExitWithDirectoryOrFallback(targetDir, func() {
+		fmt.Fprintf(os.Stderr, "fzf: autocd failed, falling back to normal exit\n")
+		os.Exit(0)
+	})
+}
+
+func isDirectory(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
